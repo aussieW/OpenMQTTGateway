@@ -53,7 +53,7 @@ boolean RFtoMQTT(){
       taskMessage = taskMessage + xPortGetCoreID();
       trc(taskMessage);
     #endif
-    unsigned long MQTTvalue = 0;
+    unsigned long long MQTTvalue = 0;
     String MQTTprotocol;
     String MQTTbits;
     String MQTTlength;
@@ -68,7 +68,7 @@ boolean RFtoMQTT(){
         client.publish(subjectRFtoMQTTbits,(char *)MQTTbits.c_str());    
         client.publish(subjectRFtoMQTTlength,(char *)MQTTlength.c_str());    
         trc(F("Sending RFtoMQTT"));
-        String value = String(MQTTvalue);
+        String value = ToString(MQTTvalue);
         trc(value);
         boolean result = client.publish(subjectRFtoMQTT,(char *)value.c_str());
         if (repeatRFwMQTT){
@@ -83,7 +83,18 @@ boolean RFtoMQTT(){
 
 void MQTTtoRF(char * topicOri, char * datacallback) {
 
-  unsigned long data = strtoul(datacallback, NULL, 10); // we will not be able to pass values > 4294967295
+  //unsigned long long data = strtoull(datacallback, NULL, 19); // we will not be able to pass values > 4294967295
+
+    
+  // convert datacallback to a long long
+  unsigned long long data = 0;
+  for ( int i=0; i<10; i++ ) {
+    char c = datacallback[i];
+    if ( c<'0' || c>'9') break;
+    data *= 10;
+    data += (c - '0');
+  }
+  unsigned char* cData = (unsigned char*) &data;
 
   // RF DATA ANALYSIS
   //We look into the subject to see if a special RF protocol is defined 
@@ -132,7 +143,7 @@ void MQTTtoRF(char * topicOri, char * datacallback) {
     trc(valueBITS);
     mySwitch.setProtocol(valuePRT,valuePLSL);
     mySwitch.send(data, valueBITS);
-    // Acknowledgement to the GTWRF topic 
+    // Acknowledgement to the GTWRF topic  
     boolean result = client.publish(subjectGTWRFtoMQTT, datacallback);// we acknowledge the sending by publishing the value to an acknowledgement topic, for the moment even if it is a signal repetition we acknowledge also
     if (result){
       trc(F("MQTTtoRF ack pub."));
